@@ -22,4 +22,8 @@ module "load_balancer" {
   source = "./load_balancer"
   vpc_id = module.vpc.vpc_id
   subnet_ids = module.vpc.subnet_ids
+}
+
+resource "aws_ecr_repository" "sample_service" {
+  name = "sample-service"
 } 
