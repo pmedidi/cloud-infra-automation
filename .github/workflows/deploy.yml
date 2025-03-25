@@ -13,53 +13,35 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Install Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: '14'
-
-    - name: Install Terraform manually
-      run: |
-        sudo apt-get update && sudo apt-get install -y wget unzip
-        wget https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
-        unzip terraform_1.5.7_linux_amd64.zip
-        sudo mv terraform /usr/local/bin/
-        terraform -v
-
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
+        aws-region: us-east-1
 
-    - name: Terraform Init
-      run: terraform init
-      working-directory: ./infrastructure
-
-    - name: Terraform Apply
-      run: terraform apply -auto-approve
-      working-directory: ./infrastructure
-
-    - name: Install Node.js dependencies
-      run: npm install
-      working-directory: ./services/sample-service
-
-    - name: Build Docker image
-      run: |
-        docker build -t ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/sample-service:latest .
-      working-directory: ./services/sample-service
-
-    - name: Log in to Amazon ECR
+    - name: Login to Amazon ECR
+      id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
-    - name: Push Docker image to ECR
+    - name: Build and Push Docker image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: sample-service
+        IMAGE_TAG: latest
       run: |
-        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/sample-service:latest
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./services/sample-service
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-    - name: Deploy to ECS
-      run: |
-        aws ecs update-service \
-          --cluster my-ecs-cluster \
-          --service my-service \
-          --force-new-deployment
+    - name: Install Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.5.7
+
+    - name: Terraform Init
+      working-directory: ./infrastructure
+      run: terraform init
+
+    - name: Terraform Apply
+      working-directory: ./infrastructure
+      run: terraform apply -auto-approve
