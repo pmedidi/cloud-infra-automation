@@ -1,5 +1,6 @@
 resource "aws_iam_role" "ecs_task_execution" {
   name = "ecsTaskExecutionRole"
+  force_detach_policies = true
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -9,13 +10,18 @@ resource "aws_iam_role" "ecs_task_execution" {
         Effect = "Allow",
         Principal = {
           Service = "ecs-tasks.amazonaws.com"
-        },
-      },
-    ],
+        }
+      }
+    ]
   })
 
   tags = {
     Name = "ecs-task-execution-role"
+    ManagedBy = "terraform"
+  }
+
+  lifecycle {
+    prevent_destroy = true
   }
 }
 

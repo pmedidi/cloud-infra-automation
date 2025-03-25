@@ -4,9 +4,16 @@ resource "aws_lb" "main" {
   load_balancer_type = "application"
   security_groups    = [] # Add security group IDs
   subnets            = var.subnet_ids
+  enable_deletion_protection = false
 
   tags = {
     Name = "main-alb"
+    Environment = "production"
+    ManagedBy = "terraform"
+  }
+
+  lifecycle {
+    prevent_destroy = true
   }
 }
 
